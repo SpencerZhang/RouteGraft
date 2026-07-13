@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify tag and manifest version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e '
+            const manifest = require("./manifest.json");
+            const expected = `v${manifest.version}`;
+            if (process.env.RELEASE_TAG !== expected) {
+              throw new Error(`Tag ${process.env.RELEASE_TAG} does not match manifest ${expected}`);
+            }
+          '
+
+      - name: Run tests
+        run: npm test
+
+      - name: Package extension
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist
+          zip -r "dist/routegraft-${RELEASE_TAG}.zip" \
+            manifest.json LICENSE README.md README.zh-CN.md \
+            PRIVACY.md PRIVACY.zh-CN.md \
+            _locales assets/icons src \
+            -x "assets/icons/routegraft-1024.png"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist/routegraft-${GITHUB_REF_NAME}.zip" \
+            --verify-tag \
+            --generate-notes \
+            --title "RouteGraft ${GITHUB_REF_NAME}"

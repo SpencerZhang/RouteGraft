@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RouteGraft</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1 data-i18n="appName">RouteGraft</h1>
+        <p><span data-i18n="tagline">Switch request routes across environments.</span> <span id="app-version"></span></p>
+      </div>
+      <label class="master-toggle">
+        <input id="master-enabled" type="checkbox" />
+        <span data-i18n="running">Running</span>
+      </label>
+    </header>
+
+    <div id="status" class="status" hidden></div>
+    <section id="runtime-panel" class="runtime-panel" hidden>
+      <div class="runtime-heading">
+        <div>
+          <strong data-i18n="actualRuntimeMatches">Actual runtime matches</strong>
+          <span data-i18n="onlyRealRequests">Only real browser requests appear here.</span>
+        </div>
+        <div>
+          <button id="refresh-runtime" data-i18n="refresh" type="button">Refresh</button>
+          <button id="clear-runtime" data-i18n="clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div id="runtime-list" class="runtime-list"></div>
+    </section>
+
+    <div class="workspace">
+      <aside class="profile-sidebar">
+        <div class="sidebar-heading">
+          <h2 data-i18n="profiles">Profiles</h2>
+          <button id="add-profile" class="add-profile" data-i18n-title="newProfile" title="New profile" type="button">+</button>
+        </div>
+        <p class="sidebar-hint" data-i18n="profileHint">Select a profile. Edit its name directly.</p>
+        <div id="profile-list" class="profile-list"></div>
+        <div class="profile-actions">
+          <button id="clone-profile" data-i18n="clone" type="button">Clone</button>
+          <button id="delete-profile" class="danger-text" data-i18n="delete" type="button">Delete</button>
+        </div>
+      </aside>
+
+      <div class="content-pane">
+        <main id="editor">
+          <section>
+            <div class="section-heading first-heading">
+              <div>
+                <h2 data-i18n="redirects">Redirects</h2>
+                <p data-i18n="redirectsHint">Map any source address to a configurable target.</p>
+              </div>
+              <button id="add-redirect" data-i18n="addRedirect" type="button">+ Redirect</button>
+            </div>
+            <div id="redirect-list" class="rule-list"></div>
+          </section>
+
+          <!-- Reserved for a later major release after browser-level testing. -->
+          <section hidden aria-hidden="true">
+            <div class="section-heading">
+              <div>
+                <h2 data-i18n="headers">Headers</h2>
+                <p data-i18n="headersHint">Set or remove request and response headers.</p>
+              </div>
+              <button id="add-header" data-i18n="addHeader" type="button">+ Header</button>
+            </div>
+            <div id="header-list" class="rule-list"></div>
+          </section>
+        </main>
+
+        <footer>
+          <button id="toggle-runtime" data-i18n="runtimeLog" type="button">Runtime log</button>
+          <button id="export-config" data-i18n="exportJson" type="button">Export JSON</button>
+          <button id="import-config" data-i18n="importJson" type="button">Import JSON</button>
+          <input id="import-file" type="file" accept="application/json,.json" hidden />
+        </footer>
+      </div>
+    </div>
+
+    <template id="redirect-template">
+      <article class="rule-card card">
+        <div class="rule-topline">
+          <label class="inline-check"><input data-field="enabled" type="checkbox" /> <span data-i18n="active">Active</span></label>
+          <input data-field="name" class="rule-name" data-i18n-aria-label="ruleName" aria-label="Rule name" />
+          <button data-action="delete" class="icon-button" data-i18n-title="deleteRedirect" title="Delete redirect" type="button">×</button>
+        </div>
+        <div class="grid two">
+          <label class="field">
+            <span data-i18n="match">Match</span>
+            <select data-field="matchType">
+              <option value="prefix" data-i18n="urlPrefix">URL prefix</option>
+              <option value="wildcard" data-i18n="wildcard">Wildcard</option>
+              <option value="regex" data-i18n="regularExpression">Regular expression</option>
+            </select>
+          </label>
+          <label class="field">
+            <span data-i18n="resource">Resource</span>
+            <select data-field="resourceTypes">
+              <option value="xhr" data-i18n="fetchXhr">Fetch / XHR</option>
+              <option value="document" data-i18n="documentsFrames">Documents / Frames</option>
+              <option value="script" data-i18n="scripts">Scripts</option>
+              <option value="stylesheet" data-i18n="stylesheets">Stylesheets</option>
+              <option value="image" data-i18n="images">Images</option>
+              <option value="font" data-i18n="fonts">Fonts</option>
+              <option value="media" data-i18n="media">Media</option>
+              <option value="websocket" data-i18n="websocket">WebSocket</option>
+              <option value="all" data-i18n="allResources">All resources</option>
+            </select>
+          </label>
+        </div>
+        <label class="field">
+          <span data-i18n="source">Source</span>
+          <input data-field="source" placeholder="https://api.example.com" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span data-i18n="target">Target</span>
+          <input data-field="target" placeholder="http://127.0.0.1:8080" spellcheck="false" />
+        </label>
+        <label class="inline-check preserve-row">
+          <input data-field="preserveSuffix" type="checkbox" /> <span data-i18n="preserveSuffix">Preserve remaining path and query</span>
+        </label>
+        <p class="hint" data-role="preview"></p>
+        <div class="rule-test">
+          <input data-role="test-url" data-i18n-placeholder="testUrlPlaceholder" placeholder="Paste an actual Request URL to test" spellcheck="false" />
+          <button data-action="test" data-i18n="testUrl" type="button">Test URL</button>
+        </div>
+        <p class="test-result" data-role="test-result" hidden></p>
+      </article>
+    </template>
+
+    <template id="header-template">
+      <article class="rule-card card">
+        <div class="rule-topline">
+          <label class="inline-check"><input data-field="enabled" type="checkbox" /> <span data-i18n="active">Active</span></label>
+          <input data-field="header" class="rule-name" data-i18n-aria-label="headerName" data-i18n-placeholder="headerName" aria-label="Header name" placeholder="Header name" />
+          <button data-action="delete" class="icon-button" data-i18n-title="deleteHeader" title="Delete header" type="button">×</button>
+        </div>
+        <div class="grid three">
+          <label class="field"><span data-i18n="side">Side</span><select data-field="target"><option value="request" data-i18n="request">Request</option><option value="response" data-i18n="response">Response</option></select></label>
+          <label class="field"><span data-i18n="operation">Operation</span><select data-field="operation"><option value="set" data-i18n="set">Set</option><option value="remove" data-i18n="remove">Remove</option></select></label>
+          <label class="field"><span data-i18n="match">Match</span><select data-field="matchType"><option value="prefix" data-i18n="urlPrefix">URL prefix</option><option value="wildcard" data-i18n="wildcard">Wildcard</option><option value="regex" data-i18n="regex">Regex</option></select></label>
+        </div>
+        <label class="field value-field"><span data-i18n="value">Value</span><input data-field="value" /></label>
+        <label class="field"><span data-i18n="urlPattern">URL pattern</span><input data-field="urlPattern" placeholder="https://api.example.com" spellcheck="false" /></label>
+      </article>
+    </template>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

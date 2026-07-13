@@ -1,0 +1,11 @@
+{
+  "name": "routegraft",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source Chromium extension for switching request routes between environments.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
