@@ -22,7 +22,7 @@ export function createRedirectRule() {
   return {
     id: createId("redirect"),
     enabled: true,
-    name: message("apiToDevelopmentService", "API to development service"),
+    name: message("apiToDevelopmentService", "service name"),
     matchType: "prefix",
     source: "https://api.example.com",
     target: "http://127.0.0.1:8080",
@@ -45,7 +45,7 @@ export function createHeaderRule() {
   };
 }
 
-export function createProfile(name = message("localDevelopment", "Local development")) {
+export function createProfile(name = message("localDevelopment", "develop")) {
   return {
     id: createId("profile"),
     name,

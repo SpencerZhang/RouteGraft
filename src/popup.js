@@ -10,6 +10,7 @@ import { importConfiguration } from "./import.js";
 import { normalizePrefixBase, simulateRedirect } from "./rules.js";
 
 let state;
+const expandedRedirects = new Map();
 
 const RESOURCE_PRESETS = {
   xhr: ["xmlhttprequest"],
@@ -31,6 +32,8 @@ const elements = {
   profileList: document.querySelector("#profile-list"),
   redirectList: document.querySelector("#redirect-list"),
   headerList: document.querySelector("#header-list"),
+  expandRedirects: document.querySelector("#expand-redirects"),
+  collapseRedirects: document.querySelector("#collapse-redirects"),
   status: document.querySelector("#status"),
 };
 
@@ -82,36 +85,22 @@ function bindStaticEvents() {
     scheduleSave();
   });
 
-  document.querySelector("#clone-profile").addEventListener("click", () => {
-    const copy = structuredClone(selectedProfile());
-    copy.id = createId("profile");
-    copy.name = t("copySuffix", copy.name);
-    copy.enabled = false;
-    copy.redirects.forEach((rule) => (rule.id = createId("redirect")));
-    copy.headers.forEach((rule) => (rule.id = createId("header")));
-    state.profiles.push(copy);
-    state.selectedProfileId = copy.id;
-    render();
-    scheduleSave();
-  });
-
-  document.querySelector("#delete-profile").addEventListener("click", () => {
-    if (state.profiles.length === 1) {
-      showStatus(t("atLeastOneProfile"), true);
-      return;
-    }
-    const profile = selectedProfile();
-    if (!confirm(t("deleteProfileConfirm", profile.name))) return;
-    state.profiles = state.profiles.filter((item) => item.id !== profile.id);
-    state.selectedProfileId = state.profiles[0].id;
-    render();
-    scheduleSave();
-  });
-
   document.querySelector("#add-redirect").addEventListener("click", () => {
-    selectedProfile().redirects.push(createRedirectRule());
+    const rule = createRedirectRule();
+    selectedProfile().redirects.push(rule);
+    expandedRedirects.set(rule.id, true);
     renderRules();
     scheduleSave();
+  });
+
+  elements.expandRedirects.addEventListener("click", () => {
+    selectedProfile().redirects.forEach((rule) => expandedRedirects.set(rule.id, true));
+    renderRules();
+  });
+
+  elements.collapseRedirects.addEventListener("click", () => {
+    selectedProfile().redirects.forEach((rule) => expandedRedirects.set(rule.id, false));
+    renderRules();
   });
 
   document.querySelector("#add-header").addEventListener("click", () => {
@@ -234,14 +223,68 @@ function renderProfileTabs() {
         scheduleSave();
       });
 
+      const actions = document.createElement("div");
+      actions.className = "profile-tab-actions";
+
+      const clone = document.createElement("button");
+      clone.type = "button";
+      clone.className = "profile-tab-action clone";
+      clone.textContent = "⧉";
+      clone.title = t("cloneProfile", profile.name);
+      clone.setAttribute("aria-label", clone.title);
+      clone.addEventListener("click", (event) => {
+        event.stopPropagation();
+        cloneProfile(profile);
+      });
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "profile-tab-action delete";
+      remove.textContent = "×";
+      remove.title = t("deleteProfile", profile.name);
+      remove.setAttribute("aria-label", remove.title);
+      remove.addEventListener("click", (event) => {
+        event.stopPropagation();
+        deleteProfile(profile);
+      });
+
+      actions.append(clone, remove);
+
       tab.addEventListener("click", (event) => {
         if (event.target === enabled) return;
         selectProfile(profile.id);
       });
-      tab.append(enabled, name);
+      tab.append(enabled, name, actions);
       return tab;
     }),
   );
+}
+
+function cloneProfile(profile) {
+  const copy = structuredClone(profile);
+  copy.id = createId("profile");
+  copy.name = t("copySuffix", copy.name);
+  copy.enabled = false;
+  copy.redirects.forEach((rule) => (rule.id = createId("redirect")));
+  copy.headers.forEach((rule) => (rule.id = createId("header")));
+  state.profiles.push(copy);
+  state.selectedProfileId = copy.id;
+  render();
+  scheduleSave();
+}
+
+function deleteProfile(profile) {
+  if (state.profiles.length === 1) {
+    showStatus(t("atLeastOneProfile"), true);
+    return;
+  }
+  if (!confirm(t("deleteProfileConfirm", profile.name))) return;
+  state.profiles = state.profiles.filter((item) => item.id !== profile.id);
+  if (state.selectedProfileId === profile.id) {
+    state.selectedProfileId = state.profiles[0].id;
+  }
+  render();
+  scheduleSave();
 }
 
 function selectProfile(profileId) {
@@ -256,6 +299,12 @@ function selectProfile(profileId) {
 
 function renderRules() {
   const profile = selectedProfile();
+  profile.redirects.forEach((rule, index) => {
+    if (!expandedRedirects.has(rule.id)) expandedRedirects.set(rule.id, index === 0);
+  });
+  const showBulkActions = profile.redirects.length > 1;
+  elements.expandRedirects.hidden = !showBulkActions;
+  elements.collapseRedirects.hidden = !showBulkActions;
   elements.redirectList.replaceChildren(
     ...profile.redirects.map((rule) => renderRedirect(rule)),
   );
@@ -265,8 +314,23 @@ function renderRules() {
 function renderRedirect(rule) {
   const card = document.querySelector("#redirect-template").content.firstElementChild.cloneNode(true);
   localizeTree(card);
+  card.dataset.ruleId = rule.id;
   setFields(card, rule);
   updateRedirectCard(card, rule);
+  setRedirectExpanded(card, rule.id, expandedRedirects.get(rule.id));
+
+  const toggle = card.querySelector('[data-action="toggle"]');
+  const body = card.querySelector(".rule-body");
+  body.id = `redirect-body-${rule.id}`;
+  toggle.setAttribute("aria-controls", body.id);
+  toggle.addEventListener("click", () => toggleRedirect(card, rule.id));
+  card.querySelector('[data-role="summary"]').addEventListener("click", () => {
+    toggleRedirect(card, rule.id);
+  });
+  card.querySelector(".rule-topline").addEventListener("click", (event) => {
+    if (event.target.closest("input, button, label")) return;
+    toggleRedirect(card, rule.id);
+  });
 
   card.addEventListener("input", (event) => {
     updateRuleFromField(rule, event.target);
@@ -279,6 +343,7 @@ function renderRedirect(rule) {
     scheduleSave();
   });
   card.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    expandedRedirects.delete(rule.id);
     selectedProfile().redirects = selectedProfile().redirects.filter((item) => item.id !== rule.id);
     renderRules();
     scheduleSave();
@@ -287,6 +352,18 @@ function renderRedirect(rule) {
     void testRedirect(card, rule);
   });
   return card;
+}
+
+function toggleRedirect(card, ruleId) {
+  setRedirectExpanded(card, ruleId, card.classList.contains("collapsed"));
+}
+
+function setRedirectExpanded(card, ruleId, expanded) {
+  expandedRedirects.set(ruleId, expanded);
+  card.classList.toggle("collapsed", !expanded);
+  const toggle = card.querySelector('[data-action="toggle"]');
+  toggle.setAttribute("aria-expanded", String(expanded));
+  toggle.title = t(expanded ? "collapseRule" : "expandRule");
 }
 
 async function testRedirect(card, rule) {
@@ -375,6 +452,11 @@ function resourcePresetFor(resourceTypes) {
 }
 
 function updateRedirectCard(card, rule) {
+  const summary = card.querySelector('[data-role="summary"]');
+  const sourceSummary = String(rule.source || "").trim() || t("source");
+  const targetSummary = String(rule.target || "").trim() || t("target");
+  summary.textContent = `${sourceSummary} → ${targetSummary}`;
+  summary.title = summary.textContent;
   const preserveRow = card.querySelector(".preserve-row");
   preserveRow.hidden = rule.matchType !== "prefix";
   const preview = card.querySelector('[data-role="preview"]');

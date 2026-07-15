@@ -34,3 +34,16 @@ test("manifest enables Chrome locale selection", async () => {
   assert.equal(manifest.name, "__MSG_appName__");
   assert.equal(manifest.description, "__MSG_appDescription__");
 });
+
+test("redirect editor exposes individual and bulk collapse controls", async () => {
+  const [html, css] = await Promise.all([
+    readFile(new URL("../src/popup.html", import.meta.url), "utf8"),
+    readFile(new URL("../src/popup.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(html, /id="expand-redirects"/);
+  assert.match(html, /id="collapse-redirects"/);
+  assert.match(html, /data-action="toggle"/);
+  assert.match(html, /class="rule-body"/);
+  assert.match(html, /data-role="summary"/);
+  assert.match(css, /\.rule-card\.collapsed \.rule-body\s*\{\s*display:\s*none/);
+});

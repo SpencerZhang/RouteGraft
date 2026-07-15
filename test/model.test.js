@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeState } from "../src/model.js";
+import { createInitialState, createRedirectRule, normalizeState } from "../src/model.js";
+
+test("new profiles and redirects use concise editable default names", () => {
+  assert.equal(createInitialState().profiles[0].name, "develop");
+  assert.equal(createRedirectRule().name, "service name");
+});
 
 test("normalization preserves the monotonic save revision", () => {
   const state = normalizeState({
