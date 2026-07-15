@@ -47,3 +47,20 @@ test("redirect editor exposes individual and bulk collapse controls", async () =
   assert.match(html, /data-role="summary"/);
   assert.match(css, /\.rule-card\.collapsed \.rule-body\s*\{\s*display:\s*none/);
 });
+
+test("header editor is enabled with resource and collapse controls", async () => {
+  const html = await readFile(new URL("../src/popup.html", import.meta.url), "utf8");
+  const section = html.match(/<section>\s*<div class="section-heading">[\s\S]*?<h2 data-i18n="headers">[\s\S]*?<\/section>/)?.[0];
+  assert.ok(section, "visible Header section is missing");
+  assert.match(section, /id="expand-headers"/);
+  assert.match(section, /id="collapse-headers"/);
+  assert.match(section, /id="add-header"/);
+  assert.doesNotMatch(section, /aria-hidden="true"/);
+
+  const template = html.match(/<template id="header-template">[\s\S]*?<\/template>/)?.[0];
+  assert.ok(template, "Header template is missing");
+  assert.match(template, /data-action="toggle"/);
+  assert.match(template, /data-field="resourceTypes"/);
+  assert.match(template, /data-field="target"/);
+  assert.match(template, /data-field="operation"/);
+});

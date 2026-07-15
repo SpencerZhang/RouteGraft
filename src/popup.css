@@ -63,8 +63,8 @@ main { padding: 4px 14px 14px; }
 .first-heading { margin-top: 10px; }
 h2 { margin: 0; font-size: 15px; }
 .section-heading p { margin: 2px 0 0; color: #6b768c; font-size: 11px; }
-.redirect-actions { display: flex; gap: 6px; }
-.redirect-actions button { padding: 6px 8px; font-size: 10px; }
+.section-actions { display: flex; gap: 6px; }
+.section-actions button { padding: 6px 8px; font-size: 10px; }
 .rule-list { display: grid; gap: 10px; }
 .rule-list:empty::after { content: "No rules yet."; display: block; border: 1px dashed #cbd4e4; border-radius: 10px; padding: 18px; text-align: center; color: #7b869b; font-size: 12px; }
 .rule-card { padding: 11px; }

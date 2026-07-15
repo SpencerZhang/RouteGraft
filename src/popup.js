@@ -11,6 +11,7 @@ import { normalizePrefixBase, simulateRedirect } from "./rules.js";
 
 let state;
 const expandedRedirects = new Map();
+const expandedHeaders = new Map();
 
 const RESOURCE_PRESETS = {
   xhr: ["xmlhttprequest"],
@@ -34,6 +35,8 @@ const elements = {
   headerList: document.querySelector("#header-list"),
   expandRedirects: document.querySelector("#expand-redirects"),
   collapseRedirects: document.querySelector("#collapse-redirects"),
+  expandHeaders: document.querySelector("#expand-headers"),
+  collapseHeaders: document.querySelector("#collapse-headers"),
   status: document.querySelector("#status"),
 };
 
@@ -104,9 +107,21 @@ function bindStaticEvents() {
   });
 
   document.querySelector("#add-header").addEventListener("click", () => {
-    selectedProfile().headers.push(createHeaderRule());
+    const rule = createHeaderRule();
+    selectedProfile().headers.push(rule);
+    expandedHeaders.set(rule.id, true);
     renderRules();
     scheduleSave();
+  });
+
+  elements.expandHeaders.addEventListener("click", () => {
+    selectedProfile().headers.forEach((rule) => expandedHeaders.set(rule.id, true));
+    renderRules();
+  });
+
+  elements.collapseHeaders.addEventListener("click", () => {
+    selectedProfile().headers.forEach((rule) => expandedHeaders.set(rule.id, false));
+    renderRules();
   });
 
   document.querySelector("#export-config").addEventListener("click", exportConfig);
@@ -154,19 +169,49 @@ function createRuntimeEntry(match) {
     return entry;
   }
 
-  const redirect = findMatchingRedirect(match.url);
-  const target = match.target || (redirect
-    ? simulateRedirect(redirect, match.url).target
-    : t("unknownTarget"));
+  const runtimeRule = findRuleByRuntimeId(match.ruleId);
+  const redirect = runtimeRule?.kind === "redirect"
+    ? runtimeRule.rule
+    : findMatchingRedirect(match.url);
   const headline = document.createElement("strong");
   const ruleLabel = match.ruleId == null
     ? t("pageHook")
     : t("ruleNumber", String(match.ruleId));
   headline.textContent = `${new Date(match.time).toLocaleTimeString()} · ${match.source || "DNR"} · ${match.type} · ${ruleLabel}`;
   const route = document.createElement("div");
-  route.textContent = `${match.url} → ${target}`;
+  if (runtimeRule?.kind === "header") {
+    const rule = runtimeRule.rule;
+    const side = t(rule.target === "response" ? "response" : "request");
+    const operation = t(rule.operation === "remove" ? "remove" : "set");
+    const value = rule.operation === "remove" ? "" : ` = ${rule.value}`;
+    route.textContent = `${match.url} · ${side} · ${operation} ${rule.header}${value}`;
+  } else {
+    const target = match.target || (redirect
+      ? simulateRedirect(redirect, match.url).target
+      : t("unknownTarget"));
+    route.textContent = `${match.url} → ${target}`;
+  }
   entry.append(headline, route);
   return entry;
+}
+
+function findRuleByRuntimeId(ruleId) {
+  if (ruleId == null || !state.masterEnabled) return null;
+  let compiledId = 1;
+  for (const profile of state.profiles) {
+    if (!profile.enabled) continue;
+    for (const rule of profile.redirects) {
+      if (!rule.enabled) continue;
+      if (compiledId === ruleId) return { kind: "redirect", rule };
+      compiledId += 1;
+    }
+    for (const rule of profile.headers) {
+      if (!rule.enabled) continue;
+      if (compiledId === ruleId) return { kind: "header", rule };
+      compiledId += 1;
+    }
+  }
+  return null;
 }
 
 function findMatchingRedirect(url) {
@@ -302,9 +347,15 @@ function renderRules() {
   profile.redirects.forEach((rule, index) => {
     if (!expandedRedirects.has(rule.id)) expandedRedirects.set(rule.id, index === 0);
   });
+  profile.headers.forEach((rule, index) => {
+    if (!expandedHeaders.has(rule.id)) expandedHeaders.set(rule.id, index === 0);
+  });
   const showBulkActions = profile.redirects.length > 1;
   elements.expandRedirects.hidden = !showBulkActions;
   elements.collapseRedirects.hidden = !showBulkActions;
+  const showHeaderBulkActions = profile.headers.length > 1;
+  elements.expandHeaders.hidden = !showHeaderBulkActions;
+  elements.collapseHeaders.hidden = !showHeaderBulkActions;
   elements.redirectList.replaceChildren(
     ...profile.redirects.map((rule) => renderRedirect(rule)),
   );
@@ -403,8 +454,23 @@ async function testRedirect(card, rule) {
 function renderHeader(rule) {
   const card = document.querySelector("#header-template").content.firstElementChild.cloneNode(true);
   localizeTree(card);
+  card.dataset.ruleId = rule.id;
   setFields(card, rule);
   updateHeaderCard(card, rule);
+  setHeaderExpanded(card, rule.id, expandedHeaders.get(rule.id));
+
+  const toggle = card.querySelector('[data-action="toggle"]');
+  const body = card.querySelector(".rule-body");
+  body.id = `header-body-${rule.id}`;
+  toggle.setAttribute("aria-controls", body.id);
+  toggle.addEventListener("click", () => toggleHeader(card, rule.id));
+  card.querySelector('[data-role="summary"]').addEventListener("click", () => {
+    toggleHeader(card, rule.id);
+  });
+  card.querySelector(".rule-topline").addEventListener("click", (event) => {
+    if (event.target.closest("input, button, label")) return;
+    toggleHeader(card, rule.id);
+  });
 
   card.addEventListener("input", (event) => {
     updateRuleFromField(rule, event.target);
@@ -417,11 +483,24 @@ function renderHeader(rule) {
     scheduleSave();
   });
   card.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    expandedHeaders.delete(rule.id);
     selectedProfile().headers = selectedProfile().headers.filter((item) => item.id !== rule.id);
     renderRules();
     scheduleSave();
   });
   return card;
+}
+
+function toggleHeader(card, ruleId) {
+  setHeaderExpanded(card, ruleId, card.classList.contains("collapsed"));
+}
+
+function setHeaderExpanded(card, ruleId, expanded) {
+  expandedHeaders.set(ruleId, expanded);
+  card.classList.toggle("collapsed", !expanded);
+  const toggle = card.querySelector('[data-action="toggle"]');
+  toggle.setAttribute("aria-expanded", String(expanded));
+  toggle.title = t(expanded ? "collapseRule" : "expandRule");
 }
 
 function setFields(card, rule) {
@@ -475,6 +554,14 @@ function updateRedirectCard(card, rule) {
 
 function updateHeaderCard(card, rule) {
   card.querySelector(".value-field").hidden = rule.operation === "remove";
+  const summary = card.querySelector('[data-role="summary"]');
+  const side = t(rule.target === "response" ? "response" : "request");
+  const operation = t(rule.operation === "remove" ? "remove" : "set");
+  const header = String(rule.header || "").trim() || t("headerName");
+  const value = rule.operation === "remove" ? "" : ` = ${rule.value || ""}`;
+  const pattern = String(rule.urlPattern || "").trim() || t("urlPattern");
+  summary.textContent = `${side} · ${operation} ${header}${value} · ${pattern}`;
+  summary.title = summary.textContent;
 }
 
 function selectedProfile() {

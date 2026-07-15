@@ -152,7 +152,7 @@ test("header remove omits a value", () => {
   ]);
 });
 
-test("saved header rules stay inactive until the later major release", () => {
+test("enabled header rules compile with their profile", () => {
   const result = compileState({
     masterEnabled: true,
     profiles: [{
@@ -174,7 +174,52 @@ test("saved header rules stay inactive until the later major release", () => {
     }],
   });
 
-  assert.deepEqual(result, { rules: [], errors: [] });
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.rules.length, 1);
+  assert.deepEqual(result.rules[0], {
+    id: 1,
+    priority: 101,
+    action: {
+      type: "modifyHeaders",
+      requestHeaders: [{
+        header: "X-Development-Mode",
+        operation: "set",
+        value: "true",
+      }],
+    },
+    condition: {
+      resourceTypes: ["xmlhttprequest"],
+      regexFilter: "^https://app\\.example\\.com([/?#].*)?$",
+    },
+  });
+});
+
+test("invalid header rules report validation errors", () => {
+  const result = compileState({
+    masterEnabled: true,
+    profiles: [{
+      id: "dev",
+      name: "Dev",
+      enabled: true,
+      redirects: [],
+      headers: [{
+        id: "missing-value",
+        enabled: true,
+        target: "request",
+        operation: "set",
+        header: "X-Development-Mode",
+        value: "",
+        matchType: "prefix",
+        urlPattern: "https://app.example.com",
+        resourceTypes: ["xmlhttprequest"],
+      }],
+    }],
+  });
+
+  assert.equal(result.rules.length, 0);
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].ruleName, "X-Development-Mode");
+  assert.match(result.errors[0].message, /value is required/i);
 });
 
 test("only enabled profiles and rules compile", () => {

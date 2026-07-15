@@ -14,6 +14,7 @@ HTTP(S) service.
 - Multiple reusable profiles, with more than one profile active at once
 - Master pause switch and per-profile/per-rule switches
 - URL redirects using prefix, wildcard, or regular-expression matching
+- Request and response Header rules using set or remove operations
 - Configurable source and target addresses
 - Optional preservation of the remaining path and query string
 - Local-only persistence through `chrome.storage.local`
@@ -21,10 +22,6 @@ HTTP(S) service.
 - Best-effort import of common legacy ModHeader export shapes
 - English and Simplified Chinese UI, selected automatically from the browser language
 - No account, analytics, ads, remote scripts, or backend service
-
-Header modification code is retained as a disabled preview for a later major
-release. The current release neither shows Header controls nor applies saved or
-imported Header rules.
 
 ## Example
 
@@ -78,6 +75,14 @@ Target: http://dev.internal/$2
 
 Uses the RE2 syntax supported by Chrome `declarativeNetRequest`. Captures in
 the target use `$1` through `$9` in the UI.
+
+## Header rules
+
+Header rules can set or remove a request or response Header for matching URLs.
+Each rule supports the same prefix, wildcard, and regular-expression match
+modes, plus a resource type such as Fetch / XHR or Documents / Frames. Header
+changes are applied by Chrome's native Manifest V3 `modifyHeaders` rules and
+remain scoped to the enabled profile and rule.
 
 ## Important browser behavior
 

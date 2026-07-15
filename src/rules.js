@@ -1,7 +1,4 @@
 const MAX_REGEX_CAPTURE_GROUPS = 9;
-// Reserved for a later major release. Header modification has not completed
-// browser-level verification and must not create active DNR rules yet.
-export const ENABLE_HEADER_RULES = false;
 
 export function compileState(state) {
   const rules = [];
@@ -21,14 +18,12 @@ export function compileState(state) {
       }
     }
 
-    if (ENABLE_HEADER_RULES) {
-      for (const header of profile.headers) {
-        if (!header.enabled) continue;
-        try {
-          rules.push(compileHeader(header, nextRuleId++));
-        } catch (error) {
-          errors.push(formatError(profile, header, error));
-        }
+    for (const header of profile.headers) {
+      if (!header.enabled) continue;
+      try {
+        rules.push(compileHeader(header, nextRuleId++));
+      } catch (error) {
+        errors.push(formatError(profile, header, error));
       }
     }
   }

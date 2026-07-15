@@ -52,7 +52,7 @@
                 <h2 data-i18n="redirects">Redirects</h2>
                 <p data-i18n="redirectsHint">Map any source address to a configurable target.</p>
               </div>
-              <div class="redirect-actions">
+              <div class="section-actions">
                 <button id="expand-redirects" data-i18n="expandAll" type="button">Expand all</button>
                 <button id="collapse-redirects" data-i18n="collapseAll" type="button">Collapse all</button>
                 <button id="add-redirect" data-i18n="addRedirect" type="button">+ Redirect</button>
@@ -61,14 +61,17 @@
             <div id="redirect-list" class="rule-list"></div>
           </section>
 
-          <!-- Reserved for a later major release after browser-level testing. -->
-          <section hidden aria-hidden="true">
+          <section>
             <div class="section-heading">
               <div>
                 <h2 data-i18n="headers">Headers</h2>
                 <p data-i18n="headersHint">Set or remove request and response headers.</p>
               </div>
-              <button id="add-header" data-i18n="addHeader" type="button">+ Header</button>
+              <div class="section-actions">
+                <button id="expand-headers" data-i18n="expandAll" type="button">Expand all</button>
+                <button id="collapse-headers" data-i18n="collapseAll" type="button">Collapse all</button>
+                <button id="add-header" data-i18n="addHeader" type="button">+ Header</button>
+              </div>
             </div>
             <div id="header-list" class="rule-list"></div>
           </section>
@@ -143,15 +146,35 @@
         <div class="rule-topline">
           <label class="inline-check"><input data-field="enabled" type="checkbox" /> <span data-i18n="active">Active</span></label>
           <input data-field="header" class="rule-name" data-i18n-aria-label="headerName" data-i18n-placeholder="headerName" aria-label="Header name" placeholder="Header name" />
+          <button data-action="toggle" class="icon-button collapse-button" data-i18n-title="collapseRule" title="Collapse rule" type="button" aria-expanded="true">▾</button>
           <button data-action="delete" class="icon-button" data-i18n-title="deleteHeader" title="Delete header" type="button">×</button>
         </div>
-        <div class="grid three">
-          <label class="field"><span data-i18n="side">Side</span><select data-field="target"><option value="request" data-i18n="request">Request</option><option value="response" data-i18n="response">Response</option></select></label>
-          <label class="field"><span data-i18n="operation">Operation</span><select data-field="operation"><option value="set" data-i18n="set">Set</option><option value="remove" data-i18n="remove">Remove</option></select></label>
-          <label class="field"><span data-i18n="match">Match</span><select data-field="matchType"><option value="prefix" data-i18n="urlPrefix">URL prefix</option><option value="wildcard" data-i18n="wildcard">Wildcard</option><option value="regex" data-i18n="regex">Regex</option></select></label>
+        <p class="rule-summary" data-role="summary"></p>
+        <div class="rule-body">
+          <div class="grid two">
+            <label class="field"><span data-i18n="side">Side</span><select data-field="target"><option value="request" data-i18n="request">Request</option><option value="response" data-i18n="response">Response</option></select></label>
+            <label class="field"><span data-i18n="operation">Operation</span><select data-field="operation"><option value="set" data-i18n="set">Set</option><option value="remove" data-i18n="remove">Remove</option></select></label>
+          </div>
+          <div class="grid two">
+            <label class="field"><span data-i18n="match">Match</span><select data-field="matchType"><option value="prefix" data-i18n="urlPrefix">URL prefix</option><option value="wildcard" data-i18n="wildcard">Wildcard</option><option value="regex" data-i18n="regex">Regex</option></select></label>
+            <label class="field">
+              <span data-i18n="resource">Resource</span>
+              <select data-field="resourceTypes">
+                <option value="xhr" data-i18n="fetchXhr">Fetch / XHR</option>
+                <option value="document" data-i18n="documentsFrames">Documents / Frames</option>
+                <option value="script" data-i18n="scripts">Scripts</option>
+                <option value="stylesheet" data-i18n="stylesheets">Stylesheets</option>
+                <option value="image" data-i18n="images">Images</option>
+                <option value="font" data-i18n="fonts">Fonts</option>
+                <option value="media" data-i18n="media">Media</option>
+                <option value="websocket" data-i18n="websocket">WebSocket</option>
+                <option value="all" data-i18n="allResources">All resources</option>
+              </select>
+            </label>
+          </div>
+          <label class="field value-field"><span data-i18n="value">Value</span><input data-field="value" /></label>
+          <label class="field"><span data-i18n="urlPattern">URL pattern</span><input data-field="urlPattern" placeholder="https://api.example.com" spellcheck="false" /></label>
         </div>
-        <label class="field value-field"><span data-i18n="value">Value</span><input data-field="value" /></label>
-        <label class="field"><span data-i18n="urlPattern">URL pattern</span><input data-field="urlPattern" placeholder="https://api.example.com" spellcheck="false" /></label>
       </article>
     </template>
 
