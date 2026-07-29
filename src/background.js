@@ -1,8 +1,10 @@
 import { createInitialState, normalizeState, STORAGE_KEY } from "./model.js";
 import { compileState } from "./rules.js";
+import { createActionState } from "./action-state.js";
 
 let applyQueue = Promise.resolve();
 const MATCH_LOG_KEY = "localRouteRuntimeMatches";
+const actionIconCache = new Map();
 
 chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
   void appendRuntimeMatch({
@@ -167,13 +169,9 @@ async function applyState(state) {
 
   const appliedRules = await chrome.declarativeNetRequest.getDynamicRules();
 
-  const enabledProfileCount = state.masterEnabled
-    ? state.profiles.filter((profile) => profile.enabled).length
-    : 0;
-  await chrome.action.setBadgeText({
-    text: enabledProfileCount > 0 ? String(enabledProfileCount) : "",
-  });
-  await chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
+  const actionState = createActionState(state.masterEnabled);
+  await chrome.action.setBadgeText({ text: actionState.badgeText });
+  await setActionIcon(actionState.icon);
   await chrome.action.setTitle({
     title: state.masterEnabled
       ? message("activeRulesTitle", `RouteGraft · ${appliedRules.length} active rules`, String(appliedRules.length))
@@ -185,6 +183,38 @@ async function applyState(state) {
     errors,
     ruleCount: appliedRules.length,
   };
+}
+
+async function setActionIcon(paths) {
+  const cacheKey = Object.values(paths).join("|");
+  if (!actionIconCache.has(cacheKey)) {
+    actionIconCache.set(cacheKey, loadActionIcon(paths));
+  }
+
+  try {
+    await chrome.action.setIcon({ imageData: await actionIconCache.get(cacheKey) });
+  } catch (error) {
+    // Icon state is cosmetic and must never block profile persistence or DNR
+    // updates. Drop a failed cache entry so a later state change can retry.
+    actionIconCache.delete(cacheKey);
+    console.warn("RouteGraft could not update the toolbar icon", error);
+  }
+}
+
+async function loadActionIcon(paths) {
+  const entries = await Promise.all(Object.entries(paths).map(async ([size, path]) => {
+    const response = await fetch(chrome.runtime.getURL(path));
+    if (!response.ok) throw new Error(`Icon request failed with status ${response.status}`);
+
+    const bitmap = await createImageBitmap(await response.blob());
+    const dimension = Number(size);
+    const canvas = new OffscreenCanvas(dimension, dimension);
+    const context = canvas.getContext("2d");
+    context.drawImage(bitmap, 0, 0, dimension, dimension);
+    bitmap.close();
+    return [size, context.getImageData(0, 0, dimension, dimension)];
+  }));
+  return Object.fromEntries(entries);
 }
 
 function message(key, fallback, substitutions) {
