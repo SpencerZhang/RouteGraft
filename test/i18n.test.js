@@ -36,9 +36,10 @@ test("manifest enables Chrome locale selection", async () => {
 });
 
 test("redirect editor exposes individual and bulk collapse controls", async () => {
-  const [html, css] = await Promise.all([
+  const [html, css, script] = await Promise.all([
     readFile(new URL("../src/popup.html", import.meta.url), "utf8"),
     readFile(new URL("../src/popup.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/popup.js", import.meta.url), "utf8"),
   ]);
   assert.match(html, /id="expand-redirects"/);
   assert.match(html, /id="collapse-redirects"/);
@@ -46,6 +47,8 @@ test("redirect editor exposes individual and bulk collapse controls", async () =
   assert.match(html, /class="rule-body"/);
   assert.match(html, /data-role="summary"/);
   assert.match(css, /\.rule-card\.collapsed \.rule-body\s*\{\s*display:\s*none/);
+  assert.match(script, /expandedRedirects\.set\(rule\.id, false\)/);
+  assert.doesNotMatch(script, /expandedRedirects\.set\(rule\.id, index === 0\)/);
 });
 
 test("header editor is enabled with resource and collapse controls", async () => {

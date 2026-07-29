@@ -60,7 +60,7 @@ export function createInitialState() {
   return {
     version: SCHEMA_VERSION,
     revision: Date.now(),
-    masterEnabled: true,
+    masterEnabled: false,
     selectedProfileId: profile.id,
     profiles: [profile],
   };
@@ -91,7 +91,7 @@ export function normalizeState(value) {
   return {
     version: SCHEMA_VERSION,
     revision: Number.isSafeInteger(value.revision) ? value.revision : 0,
-    masterEnabled: value.masterEnabled !== false,
+    masterEnabled: value.masterEnabled === true,
     selectedProfileId,
     profiles,
   };

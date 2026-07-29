@@ -344,8 +344,8 @@ function selectProfile(profileId) {
 
 function renderRules() {
   const profile = selectedProfile();
-  profile.redirects.forEach((rule, index) => {
-    if (!expandedRedirects.has(rule.id)) expandedRedirects.set(rule.id, index === 0);
+  profile.redirects.forEach((rule) => {
+    if (!expandedRedirects.has(rule.id)) expandedRedirects.set(rule.id, false);
   });
   profile.headers.forEach((rule, index) => {
     if (!expandedHeaders.has(rule.id)) expandedHeaders.set(rule.id, index === 0);

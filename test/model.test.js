@@ -7,6 +7,10 @@ test("new profiles and redirects use concise editable default names", () => {
   assert.equal(createRedirectRule().name, "service name");
 });
 
+test("new installations start paused", () => {
+  assert.equal(createInitialState().masterEnabled, false);
+});
+
 test("normalization preserves the monotonic save revision", () => {
   const state = normalizeState({
     version: 1,
@@ -30,4 +34,5 @@ test("legacy saved state receives a safe baseline revision", () => {
   });
 
   assert.equal(state.revision, 0);
+  assert.equal(state.masterEnabled, false);
 });
